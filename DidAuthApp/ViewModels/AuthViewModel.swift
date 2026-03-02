@@ -5,6 +5,7 @@ final class AuthViewModel: ObservableObject {
     @Published var installedDID: String?
     @Published var statusMessage: String = "Import DID identity to begin."
     @Published var isBusy: Bool = false
+    @Published var serviceBaseURLInput: String = ""
 
     private let keychainService: KeychainService
     private let cryptoService: CryptoService
@@ -35,6 +36,35 @@ final class AuthViewModel: ObservableObject {
     func refreshIdentityStatus() {
         let identity = keychainService.loadIdentity()
         installedDID = identity?.did
+        serviceBaseURLInput = identity?.serviceBaseURL ?? ""
+    }
+
+    func saveServiceBaseURL() {
+        let value = serviceBaseURLInput.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if value.isEmpty {
+            keychainService.clearServiceBaseURL()
+            statusMessage = "Service base URL cleared."
+            return
+        }
+
+        guard let url = URL(string: value), url.scheme != nil, url.host != nil else {
+            statusMessage = "Enter a valid absolute URL (for example: https://example.com)."
+            return
+        }
+
+        do {
+            try keychainService.saveServiceBaseURL(value)
+            statusMessage = "Service base URL saved."
+        } catch {
+            statusMessage = error.localizedDescription
+        }
+    }
+
+    func clearServiceBaseURL() {
+        keychainService.clearServiceBaseURL()
+        serviceBaseURLInput = ""
+        statusMessage = "Service base URL cleared."
     }
 
     func submitLoginChallenge(from qrText: String) async {

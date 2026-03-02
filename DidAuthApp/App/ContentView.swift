@@ -37,6 +37,29 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
+                GroupBox("Service") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        TextField("https://your-did-auth-service.example.com", text: $viewModel.serviceBaseURLInput)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .keyboardType(.URL)
+                            .textFieldStyle(.roundedBorder)
+
+                        HStack(spacing: 10) {
+                            Button("Save Service URL") {
+                                viewModel.saveServiceBaseURL()
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button("Clear") {
+                                viewModel.clearServiceBaseURL()
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
                 GroupBox("Status") {
                     Text(viewModel.statusMessage)
                         .font(.callout)

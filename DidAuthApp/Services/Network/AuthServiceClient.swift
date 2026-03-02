@@ -43,8 +43,17 @@ final class AuthServiceClient {
         fallbackServiceBaseURL: String?
     ) throws -> URL {
         if let callbackURL = payload.callbackURL,
-           let url = URL(string: callbackURL) {
-            return url
+           !callbackURL.isEmpty {
+            if let absoluteURL = URL(string: callbackURL), absoluteURL.scheme != nil {
+                return absoluteURL
+            }
+
+            let serviceBaseURL = payload.serviceBaseURL ?? fallbackServiceBaseURL
+            if let serviceBaseURL,
+               let baseURL = URL(string: serviceBaseURL),
+               let relativeURL = URL(string: callbackURL, relativeTo: baseURL)?.absoluteURL {
+                return relativeURL
+            }
         }
 
         let serviceBaseURL = payload.serviceBaseURL ?? fallbackServiceBaseURL

@@ -33,6 +33,18 @@ final class KeychainService {
         return StoredIdentity(did: did, privateKeyBase64: privateKeyBase64, serviceBaseURL: serviceBaseURL)
     }
 
+    func saveServiceBaseURL(_ serviceBaseURL: String) throws {
+        try saveString(serviceBaseURL, key: Keys.serviceBaseURL)
+    }
+
+    func clearServiceBaseURL() {
+        deleteString(key: Keys.serviceBaseURL)
+    }
+
+    func loadServiceBaseURL() -> String? {
+        readString(key: Keys.serviceBaseURL)
+    }
+
     private func saveString(_ value: String, key: String) throws {
         let data = Data(value.utf8)
 
@@ -73,5 +85,14 @@ final class KeychainService {
         }
 
         return value
+    }
+
+    private func deleteString(key: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: key
+        ]
+
+        SecItemDelete(query as CFDictionary)
     }
 }
