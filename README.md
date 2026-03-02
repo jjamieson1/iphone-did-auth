@@ -102,3 +102,13 @@ Badge is configured for this repo:
 ```markdown
 [![iOS Build](https://github.com/jjamieson1/iphone-did-auth/actions/workflows/ios-build.yml/badge.svg)](https://github.com/jjamieson1/iphone-did-auth/actions/workflows/ios-build.yml)
 ```
+
+## 9) Release checklist (TestFlight / App Store)
+
+1. In Xcode, set a unique bundle identifier and your Apple Developer Team.
+2. In target settings, update `Version` and `Build` for each release.
+3. Confirm `NSCameraUsageDescription` text is accurate for production.
+4. Validate login flow against your production `did-auth-service` endpoint.
+5. Archive in Xcode (**Product → Archive**) and upload to App Store Connect.
+6. In App Store Connect, complete app metadata, privacy details, and screenshots.
+7. Distribute first to TestFlight, then submit for App Store review.
