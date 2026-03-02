@@ -1,8 +1,11 @@
 import SwiftUI
+import Combine
+import UIKit
 
 struct ContentView: View {
     @StateObject private var viewModel = AuthViewModel()
     @State private var scannerMode: ScannerMode?
+    @State private var showStatusPopup = false
 
     var body: some View {
         NavigationStack {
@@ -60,20 +63,67 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                GroupBox("Status") {
-                    Text(viewModel.statusMessage)
+                HStack {
+                    Text("Latest status")
                         .font(.callout)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    Button("View") {
+                        showStatusPopup = true
+                    }
+                    .buttonStyle(.bordered)
                 }
 
                 Spacer()
             }
             .padding()
             .navigationTitle("DID Auth")
+            .onReceive(viewModel.$statusMessage.dropFirst()) { _ in
+                showStatusPopup = true
+            }
             .sheet(item: $scannerMode) { mode in
                 ScannerSheet(mode: mode, viewModel: viewModel)
             }
+            .sheet(isPresented: $showStatusPopup) {
+                StatusPopupView(message: viewModel.statusMessage)
+            }
         }
+    }
+}
+
+private struct StatusPopupView: View {
+    let message: String
+    @Environment(\.dismiss) private var dismiss
+    @State private var copied = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                Text(message)
+                    .font(.body)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+            }
+            .navigationTitle("Status")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(copied ? "Copied" : "Copy") {
+                        UIPasteboard.general.string = message
+                        copied = true
+                    }
+                }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Close") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 }
 
