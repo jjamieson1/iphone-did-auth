@@ -78,15 +78,17 @@ final class AuthViewModel: ObservableObject {
 
         do {
             let challengePayload = try QRPayloadParser.parseChallenge(from: qrText)
-            let signature = try cryptoService.sign(
+            let signatureResult = try cryptoService.sign(
                 challenge: challengePayload.challenge,
-                privateKeyBase64: identity.privateKeyBase64
+                privateKeyBase64: identity.privateKeyBase64,
+                preferredAlgorithm: challengePayload.signatureAlgorithm
             )
 
             try await authServiceClient.submitChallengeResponse(
                 payload: challengePayload,
                 did: identity.did,
-                signatureBase64: signature,
+                signatureBase64: signatureResult.signatureBase64,
+                algorithm: signatureResult.algorithm,
                 fallbackServiceBaseURL: identity.serviceBaseURL
             )
 

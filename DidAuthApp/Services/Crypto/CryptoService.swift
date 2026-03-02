@@ -1,21 +1,53 @@
 import CryptoKit
 import Foundation
 
-struct CryptoService {
-    func sign(challenge: String, privateKeyBase64: String) throws -> String {
-        let keyCandidates = keyDataCandidates(from: privateKeyBase64)
+struct SignatureResult {
+    let signatureBase64: String
+    let algorithm: String
+}
 
-        for keyData in keyCandidates {
-            if let privateKey = loadPrivateKey(from: keyData) {
-                let signature = try privateKey.signature(for: Data(challenge.utf8))
-                return signature.derRepresentation.base64EncodedString()
+struct CryptoService {
+    func sign(challenge: String, privateKeyBase64: String, preferredAlgorithm: String?) throws -> SignatureResult {
+        let keyCandidates = keyDataCandidates(from: privateKeyBase64)
+        let challengeData = Data(challenge.utf8)
+
+        let requested = normalizedAlgorithm(preferredAlgorithm)
+        let algorithmOrder: [SigningAlgorithm] = switch requested {
+        case .es256:
+            [.es256]
+        case .edDSA:
+            [.edDSA]
+        case nil:
+            [.es256, .edDSA]
+        }
+
+        for algorithm in algorithmOrder {
+            for keyData in keyCandidates {
+                switch algorithm {
+                case .es256:
+                    if let privateKey = loadP256PrivateKey(from: keyData) {
+                        let signature = try privateKey.signature(for: challengeData)
+                        return SignatureResult(
+                            signatureBase64: signature.derRepresentation.base64EncodedString(),
+                            algorithm: "ES256"
+                        )
+                    }
+                case .edDSA:
+                    if let privateKey = loadEd25519PrivateKey(from: keyData) {
+                        let signature = try privateKey.signature(for: challengeData)
+                        return SignatureResult(
+                            signatureBase64: signature.base64EncodedString(),
+                            algorithm: "EdDSA"
+                        )
+                    }
+                }
             }
         }
 
         throw AuthAppError.invalidPrivateKey
     }
 
-    private func loadPrivateKey(from data: Data) -> P256.Signing.PrivateKey? {
+    private func loadP256PrivateKey(from data: Data) -> P256.Signing.PrivateKey? {
         if let normalizedRawData = normalizedRawKeyData(from: data),
            let privateKey = try? P256.Signing.PrivateKey(rawRepresentation: normalizedRawData) {
             return privateKey
@@ -23,6 +55,19 @@ struct CryptoService {
 
         if let privateKey = try? P256.Signing.PrivateKey(derRepresentation: data) {
             return privateKey
+        }
+
+        return nil
+    }
+
+    private func loadEd25519PrivateKey(from data: Data) -> Curve25519.Signing.PrivateKey? {
+        if data.count == 64 {
+            let seed = data.prefix(32)
+            return try? Curve25519.Signing.PrivateKey(rawRepresentation: seed)
+        }
+
+        if data.count == 32 {
+            return try? Curve25519.Signing.PrivateKey(rawRepresentation: data)
         }
 
         return nil
@@ -42,30 +87,82 @@ struct CryptoService {
 
     private func keyDataCandidates(from privateKey: String) -> [Data] {
         let trimmed = privateKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let stringCandidates = normalizedStringCandidates(from: trimmed)
         var candidates: [Data] = []
+        var seen = Set<Data>()
 
-        if let pemData = decodePEM(trimmed) {
-            candidates.append(pemData)
+        func append(_ data: Data) {
+            if seen.insert(data).inserted {
+                candidates.append(data)
+            }
         }
 
-        if let jwkDValue = extractJWKDValue(from: trimmed),
-           let jwkData = Data(base64URLEncoded: jwkDValue) {
-            candidates.append(jwkData)
-        }
+        for value in stringCandidates {
+            if let pemData = decodePEM(value) {
+                append(pemData)
+            }
 
-        if let data = Data(base64Encoded: trimmed) {
-            candidates.append(data)
-        }
+            if let jwkDValue = extractJWKDValue(from: value),
+               let jwkData = Data(base64URLEncoded: jwkDValue) {
+                append(jwkData)
+            }
 
-        if let data = Data(base64URLEncoded: trimmed) {
-            candidates.append(data)
-        }
+            if let data = Data(base64Encoded: value) {
+                append(data)
+                appendNestedTextCandidates(from: data, append: append)
+            }
 
-        if let data = decodeHex(trimmed) {
-            candidates.append(data)
+            if let data = Data(base64URLEncoded: value) {
+                append(data)
+                appendNestedTextCandidates(from: data, append: append)
+            }
+
+            if let data = decodeHex(value) {
+                append(data)
+            }
         }
 
         return candidates
+    }
+
+    private func normalizedStringCandidates(from text: String) -> [String] {
+        var values = [text]
+
+        let unescapedNewlines = text.replacingOccurrences(of: "\\n", with: "\n")
+        if unescapedNewlines != text {
+            values.append(unescapedNewlines)
+        }
+
+        for prefix in ["base64:", "base64url:", "hex:"] {
+            if text.lowercased().hasPrefix(prefix) {
+                values.append(String(text.dropFirst(prefix.count)))
+            }
+        }
+
+        return Array(Set(values))
+    }
+
+    private func appendNestedTextCandidates(from data: Data, append: (Data) -> Void) {
+        guard let text = String(data: data, encoding: .utf8) else {
+            return
+        }
+
+        let nestedCandidates = normalizedStringCandidates(from: text.trimmingCharacters(in: .whitespacesAndNewlines))
+
+        for nested in nestedCandidates {
+            if let pemData = decodePEM(nested) {
+                append(pemData)
+            }
+
+            if let jwkDValue = extractJWKDValue(from: nested),
+               let jwkData = Data(base64URLEncoded: jwkDValue) {
+                append(jwkData)
+            }
+
+            if let hexData = decodeHex(nested) {
+                append(hexData)
+            }
+        }
     }
 
     private func decodePEM(_ pemText: String) -> Data? {
@@ -115,4 +212,24 @@ struct CryptoService {
 
         return Data(bytes)
     }
+
+    private func normalizedAlgorithm(_ value: String?) -> SigningAlgorithm? {
+        guard let value else {
+            return nil
+        }
+
+        switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "es256", "p-256", "p256":
+            return .es256
+        case "eddsa", "ed25519", "ed-25519":
+            return .edDSA
+        default:
+            return nil
+        }
+    }
+}
+
+private enum SigningAlgorithm {
+    case es256
+    case edDSA
 }

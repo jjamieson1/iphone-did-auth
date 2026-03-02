@@ -12,6 +12,7 @@ struct LoginChallengePayload: Codable {
     let callbackURL: String?
     let serviceBaseURL: String?
     let responsePath: String?
+    let signatureAlgorithm: String?
 }
 
 enum QRPayloadParser {
@@ -53,6 +54,7 @@ enum QRPayloadParser {
         let callbackURL = stringValue(from: root, keys: ["callbackURL", "callbackUrl", "callback_url", "callback", "replyURL", "reply_url"])
         let serviceBaseURL = stringValue(from: root, keys: ["serviceBaseURL", "service_base_url", "serviceBaseUrl", "baseURL", "baseUrl"])
         let responsePath = stringValue(from: root, keys: ["responsePath", "response_path", "callbackPath", "callback_path"])
+        let signatureAlgorithm = stringValue(from: root, keys: ["signatureAlgorithm", "signature_algorithm", "algorithm", "alg"])
 
         guard let challengeId, !challengeId.isEmpty else {
             throw AuthAppError.missingQRField("challengeId")
@@ -67,7 +69,8 @@ enum QRPayloadParser {
             challenge: challenge,
             callbackURL: callbackURL,
             serviceBaseURL: serviceBaseURL,
-            responsePath: responsePath
+            responsePath: responsePath,
+            signatureAlgorithm: signatureAlgorithm
         )
     }
 

@@ -20,7 +20,7 @@ enum AuthAppError: LocalizedError {
         case .missingIdentity:
             return "No DID identity is installed yet. Import your DID/private key QR first."
         case .invalidPrivateKey:
-            return "The private key format is invalid for ES256 signing. Supported formats: raw 32-byte key (base64/base64url/hex), PEM/DER P-256 key, or JWK with d field."
+            return "The private key format is invalid for signing. Supported formats: P-256 key (ES256) or Ed25519 key (EdDSA), including 64-byte Ed25519 private key (seed + public key)."
         case .invalidServiceURL:
             return "The login QR does not provide a usable callback URL. If callback is a relative path, import identity with serviceBaseURL or include serviceBaseURL in the login QR."
         case let .networkError(statusCode, message):

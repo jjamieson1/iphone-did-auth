@@ -11,6 +11,7 @@ final class AuthServiceClient {
         payload: LoginChallengePayload,
         did: String,
         signatureBase64: String,
+        algorithm: String,
         fallbackServiceBaseURL: String?
     ) async throws {
         let endpoint = try buildEndpoint(from: payload, fallbackServiceBaseURL: fallbackServiceBaseURL)
@@ -24,7 +25,7 @@ final class AuthServiceClient {
             "challengeId": payload.challengeId,
             "challenge": payload.challenge,
             "signature": signatureBase64,
-            "algorithm": "ES256"
+            "algorithm": algorithm
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
