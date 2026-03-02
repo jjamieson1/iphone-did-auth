@@ -1,5 +1,7 @@
 # iPhone DID Auth App (MVP)
 
+[![iOS Build](https://github.com/jjamieson1/iphone-did-auth/actions/workflows/ios-build.yml/badge.svg)](https://github.com/jjamieson1/iphone-did-auth/actions/workflows/ios-build.yml)
+
 This workspace contains a SwiftUI iPhone app implementation that:
 
 1. Imports `did` + `privateKeyBase64` from an identity QR code.
@@ -95,8 +97,8 @@ The app sends:
 
 ## 8) CI status badge
 
-After you push this project to GitHub, add this badge near the top of this README (replace `OWNER` and `REPO`):
+Badge is configured for this repo:
 
 ```markdown
-[![iOS Build](https://github.com/OWNER/REPO/actions/workflows/ios-build.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/ios-build.yml)
+[![iOS Build](https://github.com/jjamieson1/iphone-did-auth/actions/workflows/ios-build.yml/badge.svg)](https://github.com/jjamieson1/iphone-did-auth/actions/workflows/ios-build.yml)
 ```
