@@ -10,77 +10,80 @@ struct ContentView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                GroupBox("Identity") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(viewModel.installedDID ?? "No DID imported")
-                            .font(.callout)
-                            .foregroundStyle(viewModel.installedDID == nil ? .secondary : .primary)
+            VStack(spacing: 0) {
+                AppHeaderBar()
 
-                        Button("Scan DID/Private Key QR") {
-                            scannerMode = .importIdentity
+                VStack(alignment: .leading, spacing: 16) {
+                    GroupBox("Identity") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(viewModel.installedDID ?? "No DID imported")
+                                .font(.callout)
+                                .foregroundStyle(viewModel.installedDID == nil ? .secondary : .primary)
+
+                            Button("Scan DID/Private Key QR") {
+                                scannerMode = .importIdentity
+                            }
+                            .buttonStyle(.borderedProminent)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
 
-                GroupBox("Login") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Button("Scan Login Challenge QR") {
-                            scannerMode = .loginChallenge
+                    GroupBox("Login") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Button("Scan Login Challenge QR") {
+                                scannerMode = .loginChallenge
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(viewModel.installedDID == nil || viewModel.isBusy)
+
+                            if viewModel.isBusy {
+                                ProgressView("Sending challenge response...")
+                                    .padding(.top, 4)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    GroupBox("Service") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            TextField("https://your-did-auth-service.example.com", text: $viewModel.serviceBaseURLInput)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                                .keyboardType(.URL)
+                                .textFieldStyle(.roundedBorder)
+
+                            HStack(spacing: 10) {
+                                Button("Save Service URL") {
+                                    viewModel.saveServiceBaseURL()
+                                }
+                                .buttonStyle(.bordered)
+
+                                Button("Clear") {
+                                    viewModel.clearServiceBaseURL()
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    HStack {
+                        Text("Latest status")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+
+                        Spacer()
+
+                        Button("View") {
+                            showStatusPopup = true
                         }
                         .buttonStyle(.bordered)
-                        .disabled(viewModel.installedDID == nil || viewModel.isBusy)
-
-                        if viewModel.isBusy {
-                            ProgressView("Sending challenge response...")
-                                .padding(.top, 4)
-                        }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-
-                GroupBox("Service") {
-                    VStack(alignment: .leading, spacing: 8) {
-                        TextField("https://your-did-auth-service.example.com", text: $viewModel.serviceBaseURLInput)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .keyboardType(.URL)
-                            .textFieldStyle(.roundedBorder)
-
-                        HStack(spacing: 10) {
-                            Button("Save Service URL") {
-                                viewModel.saveServiceBaseURL()
-                            }
-                            .buttonStyle(.bordered)
-
-                            Button("Clear") {
-                                viewModel.clearServiceBaseURL()
-                            }
-                            .buttonStyle(.bordered)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-
-                HStack {
-                    Text("Latest status")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
 
                     Spacer()
-
-                    Button("View") {
-                        showStatusPopup = true
-                    }
-                    .buttonStyle(.bordered)
                 }
-
-                Spacer()
+                .padding()
             }
-            .padding()
-            .navigationTitle("DID Auth")
             .onReceive(viewModel.$statusMessage.dropFirst()) { _ in
                 showStatusPopup = true
             }
@@ -122,29 +125,31 @@ private struct DeepLinkChallengeConfirmView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    GroupBox("Challenge") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            KeyValueRow(title: "challenge_id", value: pending.payload.challengeId)
-                            KeyValueRow(title: "challenge/nonce", value: pending.payload.challenge)
-                            KeyValueRow(title: "callback", value: pending.payload.callbackURL ?? "(none)")
-                            KeyValueRow(title: "serviceBaseURL", value: pending.payload.serviceBaseURL ?? "(none)")
-                            KeyValueRow(title: "algorithm", value: pending.payload.signatureAlgorithm ?? "(auto)")
+            VStack(spacing: 0) {
+                AppHeaderBar()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        GroupBox("Challenge") {
+                            VStack(alignment: .leading, spacing: 8) {
+                                KeyValueRow(title: "challenge_id", value: pending.payload.challengeId)
+                                KeyValueRow(title: "challenge/nonce", value: pending.payload.challenge)
+                                KeyValueRow(title: "callback", value: pending.payload.callbackURL ?? "(none)")
+                                KeyValueRow(title: "serviceBaseURL", value: pending.payload.serviceBaseURL ?? "(none)")
+                                KeyValueRow(title: "algorithm", value: pending.payload.signatureAlgorithm ?? "(auto)")
+                            }
+                        }
+
+                        GroupBox("Source") {
+                            Text(pending.sourceURL)
+                                .font(.callout)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
-
-                    GroupBox("Source") {
-                        Text(pending.sourceURL)
-                            .font(.callout)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+                    .padding()
                 }
-                .padding()
             }
-            .navigationTitle("Confirm Login")
-            .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {
                 HStack(spacing: 12) {
                     Button("Cancel") {
@@ -193,14 +198,16 @@ private struct StatusPopupView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                Text(message)
-                    .font(.body)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
+            VStack(spacing: 0) {
+                AppHeaderBar()
+
+                ScrollView {
+                    Text(message)
+                        .font(.body)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                }
             }
-            .navigationTitle("Status")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(copied ? "Copied" : "Copy") {
@@ -227,33 +234,57 @@ private struct ScannerSheet: View {
 
     var body: some View {
         NavigationStack {
-            CameraQRScannerView(
-                onCodeScanned: { value in
-                    switch mode {
-                    case .importIdentity:
-                        viewModel.importIdentity(from: value)
-                        dismiss()
-                    case .loginChallenge:
-                        Task {
-                            await viewModel.submitLoginChallenge(from: value)
+            VStack(spacing: 0) {
+                AppHeaderBar()
+
+                CameraQRScannerView(
+                    onCodeScanned: { value in
+                        switch mode {
+                        case .importIdentity:
+                            viewModel.importIdentity(from: value)
                             dismiss()
+                        case .loginChallenge:
+                            Task {
+                                await viewModel.submitLoginChallenge(from: value)
+                                dismiss()
+                            }
                         }
+                    },
+                    onError: { error in
+                        viewModel.statusMessage = error.localizedDescription
+                        dismiss()
                     }
-                },
-                onError: { error in
-                    viewModel.statusMessage = error.localizedDescription
-                    dismiss()
-                }
-            )
-            .ignoresSafeArea()
+                )
+            }
+            .ignoresSafeArea(edges: .bottom)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Close") { dismiss() }
                 }
             }
-            .navigationTitle(mode.title)
-            .navigationBarTitleDisplayMode(.inline)
         }
+    }
+}
+
+private struct AppHeaderBar: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            Image("AppHeaderIcon")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 28, height: 28)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+
+            Text("DID Auth")
+                .font(.headline)
+                .foregroundStyle(.white)
+
+            Spacer()
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .background(Color.black.opacity(0.92))
     }
 }
 
