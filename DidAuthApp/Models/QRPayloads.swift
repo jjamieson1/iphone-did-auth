@@ -85,30 +85,28 @@ enum QRPayloadParser {
             throw AuthAppError.invalidQRPayload
         }
 
+        if let payloadItem = components.queryItems?.first(where: {
+            ["payload", "data", "q", "qr"].contains($0.name.lowercased())
+        }),
+           let payloadValue = payloadItem.value {
+            if let payloadData = Data(base64URLEncoded: payloadValue) ?? Data(base64Encoded: payloadValue),
+               (try? JSONSerialization.jsonObject(with: payloadData)) != nil {
+                return payloadData
+            }
+
+            if let percentDecoded = payloadValue.removingPercentEncoding,
+               let payloadData = percentDecoded.data(using: .utf8),
+               (try? JSONSerialization.jsonObject(with: payloadData)) != nil {
+                return payloadData
+            }
+        }
+
         if let queryObject = queryItemsAsJSONObject(components.queryItems),
            let queryData = try? JSONSerialization.data(withJSONObject: queryObject) {
             return queryData
         }
 
-        guard let payloadItem = components.queryItems?.first(where: {
-                  ["payload", "data", "q", "qr"].contains($0.name.lowercased())
-              }),
-              let payloadValue = payloadItem.value else {
-            throw AuthAppError.invalidQRPayload
-        }
-
-        if let payloadData = Data(base64URLEncoded: payloadValue) ?? Data(base64Encoded: payloadValue),
-           (try? JSONSerialization.jsonObject(with: payloadData)) != nil {
-            return payloadData
-        }
-
-        guard let percentDecoded = payloadValue.removingPercentEncoding,
-              let payloadData = percentDecoded.data(using: .utf8),
-              (try? JSONSerialization.jsonObject(with: payloadData)) != nil else {
-            throw AuthAppError.invalidQRPayload
-        }
-
-        return payloadData
+        throw AuthAppError.invalidQRPayload
     }
 
     private static func unwrapPayloadContainer(from object: [String: Any]) -> [String: Any] {
@@ -116,8 +114,20 @@ enum QRPayloadParser {
             return nested
         }
 
+        if let nestedString = object["payload"] as? String,
+           let nestedData = nestedString.data(using: .utf8),
+           let nestedObject = try? JSONSerialization.jsonObject(with: nestedData) as? [String: Any] {
+            return nestedObject
+        }
+
         if let nested = object["data"] as? [String: Any] {
             return nested
+        }
+
+        if let nestedString = object["data"] as? String,
+           let nestedData = nestedString.data(using: .utf8),
+           let nestedObject = try? JSONSerialization.jsonObject(with: nestedData) as? [String: Any] {
+            return nestedObject
         }
 
         return object
