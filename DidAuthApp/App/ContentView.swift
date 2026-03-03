@@ -275,10 +275,6 @@ private struct AppHeaderBar: View {
                 .frame(width: 28, height: 28)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
 
-            Text("DID Auth")
-                .font(.headline)
-                .foregroundStyle(.white)
-
             Spacer()
         }
         .padding(.horizontal, 14)
