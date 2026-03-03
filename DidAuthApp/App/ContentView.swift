@@ -6,6 +6,7 @@ struct ContentView: View {
     @StateObject private var viewModel = AuthViewModel()
     @State private var scannerMode: ScannerMode?
     @State private var showStatusPopup = false
+    @State private var pendingDeepLinkChallenge: PendingDeepLinkChallenge?
 
     var body: some View {
         NavigationStack {
@@ -89,6 +90,98 @@ struct ContentView: View {
             .sheet(isPresented: $showStatusPopup) {
                 StatusPopupView(message: viewModel.statusMessage)
             }
+            .sheet(item: $pendingDeepLinkChallenge) { pending in
+                DeepLinkChallengeConfirmView(
+                    pending: pending,
+                    viewModel: viewModel,
+                    onClose: { pendingDeepLinkChallenge = nil }
+                )
+            }
+            .onOpenURL { url in
+                do {
+                    let payload = try viewModel.parseLoginChallenge(from: url.absoluteString)
+                    pendingDeepLinkChallenge = PendingDeepLinkChallenge(sourceURL: url.absoluteString, payload: payload)
+                } catch {
+                    viewModel.statusMessage = "Failed to parse deep link challenge: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+}
+
+private struct PendingDeepLinkChallenge: Identifiable {
+    let id = UUID()
+    let sourceURL: String
+    let payload: LoginChallengePayload
+}
+
+private struct DeepLinkChallengeConfirmView: View {
+    let pending: PendingDeepLinkChallenge
+    @ObservedObject var viewModel: AuthViewModel
+    let onClose: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    GroupBox("Challenge") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            KeyValueRow(title: "challenge_id", value: pending.payload.challengeId)
+                            KeyValueRow(title: "challenge/nonce", value: pending.payload.challenge)
+                            KeyValueRow(title: "callback", value: pending.payload.callbackURL ?? "(none)")
+                            KeyValueRow(title: "serviceBaseURL", value: pending.payload.serviceBaseURL ?? "(none)")
+                            KeyValueRow(title: "algorithm", value: pending.payload.signatureAlgorithm ?? "(auto)")
+                        }
+                    }
+
+                    GroupBox("Source") {
+                        Text(pending.sourceURL)
+                            .font(.callout)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle("Confirm Login")
+            .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom) {
+                HStack(spacing: 12) {
+                    Button("Cancel") {
+                        onClose()
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button(viewModel.isBusy ? "Sending..." : "Confirm & Send") {
+                        Task {
+                            await viewModel.submitLoginChallenge(payload: pending.payload)
+                            onClose()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(viewModel.isBusy)
+                }
+                .padding()
+                .background(.thinMaterial)
+            }
+        }
+        .presentationDetents([.large])
+    }
+}
+
+private struct KeyValueRow: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.callout)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

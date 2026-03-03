@@ -67,7 +67,20 @@ final class AuthViewModel: ObservableObject {
         statusMessage = "Service base URL cleared."
     }
 
+    func parseLoginChallenge(from rawValue: String) throws -> LoginChallengePayload {
+        try QRPayloadParser.parseChallenge(from: rawValue)
+    }
+
     func submitLoginChallenge(from qrText: String) async {
+        do {
+            let challengePayload = try QRPayloadParser.parseChallenge(from: qrText)
+            await submitLoginChallenge(payload: challengePayload)
+        } catch {
+            statusMessage = error.localizedDescription
+        }
+    }
+
+    func submitLoginChallenge(payload: LoginChallengePayload) async {
         guard let identity = keychainService.loadIdentity() else {
             statusMessage = AuthAppError.missingIdentity.localizedDescription
             return
@@ -77,15 +90,14 @@ final class AuthViewModel: ObservableObject {
         defer { isBusy = false }
 
         do {
-            let challengePayload = try QRPayloadParser.parseChallenge(from: qrText)
             let signatureResult = try cryptoService.sign(
-                challenge: challengePayload.challenge,
+                challenge: payload.challenge,
                 privateKeyBase64: identity.privateKeyBase64,
-                preferredAlgorithm: challengePayload.signatureAlgorithm
+                preferredAlgorithm: payload.signatureAlgorithm
             )
 
             try await authServiceClient.submitChallengeResponse(
-                payload: challengePayload,
+                payload: payload,
                 did: identity.did,
                 signatureBase64: signatureResult.signatureBase64,
                 algorithm: signatureResult.algorithm,
