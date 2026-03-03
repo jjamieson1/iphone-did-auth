@@ -21,9 +21,11 @@ final class AuthServiceClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let body: [String: Any] = [
+            "challenge_id": payload.challengeId,
             "did": did,
             "challengeId": payload.challengeId,
             "challenge": payload.challenge,
+            "nonce": payload.challenge,
             "signature": signatureBase64,
             "algorithm": algorithm
         ]

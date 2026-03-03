@@ -132,3 +132,17 @@ Simulator test command:
 ```bash
 xcrun simctl openurl booted "didauth://login?challenge_id=chal_test&nonce=nonce_test&callback=%2Fapi%2Fauth%2Frespond"
 ```
+
+## 11) App icon generation
+
+Use one 1024x1024 PNG as the source icon and generate all iOS icon sizes:
+
+```bash
+./scripts/generate_app_icons.sh /absolute/path/to/master-icon-1024.png
+```
+
+This writes all required icon files into:
+
+- `DidAuthApp/Resources/Assets.xcassets/AppIcon.appiconset`
+
+The project is already configured to use the `AppIcon` set for home screen icons.
