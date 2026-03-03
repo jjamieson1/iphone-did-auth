@@ -112,3 +112,23 @@ Badge is configured for this repo:
 5. Archive in Xcode (**Product → Archive**) and upload to App Store Connect.
 6. In App Store Connect, complete app metadata, privacy details, and screenshots.
 7. Distribute first to TestFlight, then submit for App Store review.
+
+## 10) Deep link challenge format
+
+The app registers URL scheme `didauth://` and supports receiving a challenge by deep link.
+
+Example deep link:
+
+```text
+didauth://login?challenge_id=chal_4MGbFvw4T_s&nonce=MnrWDpe5coQ3pP5FNJFm3ext1m1LD27oGIVztvQ7xHY&callback=%2Fapi%2Fauth%2Frespond&did=did%3Aexample%3Ademo
+```
+
+You can also pass JSON payload as `payload=` (base64url/base64/percent-encoded), same as QR support.
+
+When opened from deep link, the app shows a confirmation screen with challenge details and only sends the response after user taps **Confirm & Send**.
+
+Simulator test command:
+
+```bash
+xcrun simctl openurl booted "didauth://login?challenge_id=chal_test&nonce=nonce_test&callback=%2Fapi%2Fauth%2Frespond"
+```
